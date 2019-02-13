@@ -34,7 +34,21 @@ class TowerOfHanoiGame(GameMaster):
             A Tuple of Tuples that represent the game state
         """
         ### student code goes here
-        pass
+        peg_list = []
+        for peg_id in range(1, 4):
+            ask_id = parse_input("fact: (on ?disk peg" + str(peg_id) + ")")
+            listOfBindings = self.kb.kb_ask(ask_id)
+            if listOfBindings:
+                peg_list.append( [int(bindings.bindings_dict["?disk"].replace("disk", "")) for bindings in listOfBindings] )
+            else:
+                peg_list.append( [] )
+        peg_tup = []
+        for disk_list in peg_list:
+            disk_list.sort()
+            disk_tup = tuple(disk_list)
+            peg_tup.append(disk_tup)
+        peg_tup = tuple(peg_tup)
+        return peg_tup
 
     def makeMove(self, movable_statement):
         """
@@ -53,7 +67,27 @@ class TowerOfHanoiGame(GameMaster):
             None
         """
         ### Student code goes here
-        pass
+        disk_1 = str(movable_statement.terms[0])
+        peg_1 = str(movable_statement.terms[1])
+        peg_2 = str(movable_statement.terms[2])
+        self.kb.kb_retract( parse_input("fact: (thetop " + disk_1 + " " + peg_1 + ")") )
+        self.kb.kb_retract( parse_input("fact: (on " + disk_1 + " " + peg_1 + ")") )
+        answer = self.kb.kb_ask( parse_input("fact: (top " + disk_1 + " ?disk2)") )
+        if answer:
+            disk_2 = answer[0].bindings_dict["?disk2"]
+            self.kb.kb_retract( parse_input("fact: (top " + disk_1 + " " + disk_2 + ")") )
+            self.kb.kb_assert( parse_input("fact: (thetop " + disk_2 + " " + peg_1 + ")") )
+        else:
+            self.kb.kb_assert( parse_input("fact: (empty " + peg_1 + ")") )
+        answer = self.kb.kb_ask( parse_input("fact: (thetop ?disk3 " + peg_2 + ")") )
+        if answer:
+            disk_3 = answer[0].bindings_dict["?disk3"]
+            self.kb.kb_retract( parse_input("fact: (thetop " + disk_3 + " " + peg_2 + ")") )
+            self.kb.kb_assert( parse_input("fact: (top " + disk_1 + " " + disk_3 + ")") )
+        else:
+            self.kb.kb_retract( parse_input("fact: (empty " + peg_2 + ")") )
+        self.kb.kb_assert( parse_input("fact: (thetop " + disk_1 + " " + peg_2 + ")") )
+        self.kb.kb_assert( parse_input("fact: (on " + disk_1 + " " + peg_2 + ")") )
 
     def reverseMove(self, movable_statement):
         """
@@ -100,7 +134,23 @@ class Puzzle8Game(GameMaster):
             A Tuple of Tuples that represent the game state
         """
         ### Student code goes here
-        pass
+        board_matrix = []
+        for row_id in range(1, 4):
+            row_list = []
+            for col_id in range(1, 4):
+                ask_id = parse_input("fact: (at ?piece pos" + str(col_id) + " pos" + str(row_id) + ")")
+                listOfBindings = self.kb.kb_ask(ask_id)
+                if listOfBindings:
+                    row_list.append(-1 if (listOfBindings[0].bindings_dict["?piece"] == "empty") else int(listOfBindings[0].bindings_dict["?piece"].replace("tile", "")))
+                else:
+                    row_list.append()
+            board_matrix.append(row_list)
+        board_tup = []
+        for row_list in board_matrix:
+            row_tup = tuple(row_list)
+            board_tup.append(row_tup)
+        board_tup = tuple(board_tup)
+        return board_tup
 
     def makeMove(self, movable_statement):
         """
@@ -119,7 +169,15 @@ class Puzzle8Game(GameMaster):
             None
         """
         ### Student code goes here
-        pass
+        piece = str(movable_statement.terms[0])
+        initialX = str(movable_statement.terms[1])
+        initialY = str(movable_statement.terms[2])
+        targetX = str(movable_statement.terms[3])
+        targetY = str(movable_statement.terms[4])
+        self.kb.kb_retract( parse_input("fact: (at empty " + targetX + " " + targetY + ")") )
+        self.kb.kb_retract( parse_input("fact: (at " + piece + " " + initialX + " " + initialY + ")") )
+        self.kb.kb_assert( parse_input("fact: (at empty  " + initialX + " " + initialY + ")") )
+        self.kb.kb_assert( parse_input("fact: (at " + piece + " " + targetX + " " + targetY + ")") )
 
     def reverseMove(self, movable_statement):
         """
