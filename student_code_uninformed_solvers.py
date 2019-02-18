@@ -55,9 +55,10 @@ class SolverDFS(UninformedSolver):
                     return solveOneStepHelper()
                 # (root state) has no parent state, cannot back-track
                 else:
-                    # TODO --about deadloop--
-                    # If DFS has already searched all possible states but hasn't found a solution,
-                    # (do nothing and) return False will cause deadloop in SolverDFS.solve().
+                    # TODO --avoid deadloop--
+                    # If there is at least one solution, solverDFS.solve() must find it, due to no circular state and finite states.
+                    # otherwise, solverDFS.solve() return False, 
+                    # when back to root state in solveOneStep() and return True(for terminating while in solve()). 
                     return True
         
         return solveOneStepHelper()
@@ -86,7 +87,7 @@ class SolverBFS(UninformedSolver):
         if self.currentState.state == self.victoryCondition:
             return True
 
-        def solveOneStepHelper():            
+        def solveOneStepHelper(one_more_chance):            
             movables = self.gm.getMovables()
             # if current state has another child state
             if len(movables) > self.currentState.nextChildToVisit:
@@ -97,7 +98,7 @@ class SolverBFS(UninformedSolver):
                     childState = self.currentState.children[self.currentState.nextChildToVisit]
                     self.currentState.nextChildToVisit += 1
                     self.currentState = childState
-                    return solveOneStepHelper()
+                    return solveOneStepHelper(one_more_chance)
                 # current state has not been fully explored, explore child states
                 else:
                     movable = movables[self.currentState.nextChildToVisit]
@@ -119,26 +120,33 @@ class SolverBFS(UninformedSolver):
                         # Set myFlag(visited-state): full nextChildToVisit and empty children[].
                         childState.nextChildToVisit = len(movables)
                         self.gm.reverseMove(movable)
-                        return solveOneStepHelper()
+                        return solveOneStepHelper(one_more_chance)
             # no more child state, try to back-track
             else:
                 # if not myFlag(visited-state), reset nextChildToVisit and back-track
                 if len(movables) == len(self.currentState.children):
-                    self.currentState.nextChildToVisit = 0
                     if self.currentState.parent:
+                        self.currentState.nextChildToVisit = 0
                         self.gm.reverseMove(self.currentState.requiredMovable)
                         self.currentState = self.currentState.parent
-                    return solveOneStepHelper()
+                    else:
+                        if one_more_chance:
+                            self.currentState.nextChildToVisit = 0
+                            one_more_chance = False
+                        else:
+                            return True
+                    return solveOneStepHelper(one_more_chance)
                 # if myFlag(visited-state), back-track
                 else:
                     self.gm.reverseMove(self.currentState.requiredMovable)
                     self.currentState = self.currentState.parent
-                    return solveOneStepHelper()
+                    return solveOneStepHelper(one_more_chance)
 
-        # TODO --about deadloop--
-        # If there is at least one solution, it must be found by BFS, 
-        # otherwise may cause deadloop in solveOneStepHelper().
+        # TODO --avoid deadloop--
+        # If there is at least one solution, solverBFS.solve() must find it,
+        # otherwise, solverBFS.solve() return False, 
+        # when no univisited state can be found in solveOneStep() and return True(for terminating while in solve()). 
         if self.currentState.parent:
             self.gm.reverseMove(self.currentState.requiredMovable)
             self.currentState = self.currentState.parent
-        return solveOneStepHelper()
+        return solveOneStepHelper(True)
