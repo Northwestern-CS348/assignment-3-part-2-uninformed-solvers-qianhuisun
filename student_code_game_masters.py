@@ -141,9 +141,9 @@ class Puzzle8Game(GameMaster):
                 ask_id = parse_input("fact: (at ?piece pos" + str(col_id) + " pos" + str(row_id) + ")")
                 listOfBindings = self.kb.kb_ask(ask_id)
                 if listOfBindings:
-                    row_list.append(-1 if (listOfBindings[0].bindings_dict["?piece"] == "empty") else int(listOfBindings[0].bindings_dict["?piece"].replace("tile", "")))
+                    row_list.append(int(listOfBindings[0].bindings_dict["?piece"].replace("tile", "")))
                 else:
-                    row_list.append()
+                    row_list.append(-1)
             board_matrix.append(row_list)
         board_tup = []
         for row_list in board_matrix:
@@ -174,9 +174,9 @@ class Puzzle8Game(GameMaster):
         initialY = str(movable_statement.terms[2])
         targetX = str(movable_statement.terms[3])
         targetY = str(movable_statement.terms[4])
-        self.kb.kb_retract( parse_input("fact: (at empty " + targetX + " " + targetY + ")") )
+        self.kb.kb_retract( parse_input("fact: (empty " + targetX + " " + targetY + ")") )
         self.kb.kb_retract( parse_input("fact: (at " + piece + " " + initialX + " " + initialY + ")") )
-        self.kb.kb_assert( parse_input("fact: (at empty  " + initialX + " " + initialY + ")") )
+        self.kb.kb_assert( parse_input("fact: (empty  " + initialX + " " + initialY + ")") )
         self.kb.kb_assert( parse_input("fact: (at " + piece + " " + targetX + " " + targetY + ")") )
 
     def reverseMove(self, movable_statement):

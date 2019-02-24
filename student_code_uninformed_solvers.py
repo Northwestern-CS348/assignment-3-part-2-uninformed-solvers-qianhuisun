@@ -5,6 +5,38 @@ class SolverDFS(UninformedSolver):
     def __init__(self, gameMaster, victoryCondition):
         super().__init__(gameMaster, victoryCondition)
 
+    def solveOneStepDFS(self):
+        movables = self.gm.getMovables()
+        # if current state has another child state
+        if len(movables) > self.currentState.nextChildToVisit:
+            movable = movables[self.currentState.nextChildToVisit]
+            self.gm.makeMove(movable)
+            childState = GameState(self.gm.getGameState(), self.currentState.depth + 1, movable)
+            childState.parent = self.currentState
+            # self.currentState.children.append(childState)
+            self.currentState.nextChildToVisit += 1
+            # if such child state is not visited, this step is done
+            if childState not in self.visited:
+                self.currentState = childState
+                self.visited[childState] = True
+                # terminated, return Ture/False
+                return True
+            # child state is visited before, back-track
+            else:
+                self.gm.reverseMove(movable)
+                return self.solveOneStepDFS()
+        # no more child state, try to back-track
+        else:
+            # if current state has parent state, can back-track
+            if self.currentState.parent:
+                self.gm.reverseMove(self.currentState.requiredMovable)
+                self.currentState = self.currentState.parent
+                return self.solveOneStepDFS()
+            # (root state) has no parent state, cannot back-track
+            else:
+                # terminated, return Ture/False
+                return True
+
     def solveOneStep(self):
         """
         Go to the next state that has not been explored. If a
@@ -23,50 +55,70 @@ class SolverDFS(UninformedSolver):
         # if has reach winning condition
         if self.currentState.state == self.victoryCondition:
             return True
-
-        def solveOneStepHelper():
-            movables = self.gm.getMovables()
-            # if current state has another child state
-            if len(movables) > self.currentState.nextChildToVisit:
-                movable = movables[self.currentState.nextChildToVisit]
-                self.gm.makeMove(movable)
-                childState = GameState(self.gm.getGameState(), self.currentState.depth + 1, movable)
-                childState.parent = self.currentState
-                self.currentState.children.append(childState)
-                self.currentState.nextChildToVisit += 1
-                # if such child state is not visited, this step is done
-                if childState not in self.visited:
-                    self.currentState = childState
-                    self.visited[childState] = True
-                    if childState.state == self.victoryCondition:
-                        return True
-                    else:
-                        return False
-                # child state is visited before, back-track
-                else:
-                    self.gm.reverseMove(movable)
-                    return solveOneStepHelper()
-            # no more child state, try to back-track
-            else:
-                # if current state has parent state, can back-track
-                if self.currentState.parent:
-                    self.gm.reverseMove(self.currentState.requiredMovable)
-                    self.currentState = self.currentState.parent
-                    return solveOneStepHelper()
-                # (root state) has no parent state, cannot back-track
-                else:
-                    # TODO --avoid deadloop--
-                    # If there is at least one solution, solverDFS.solve() must find it, due to no circular state and finite states.
-                    # otherwise, solverDFS.solve() return False, 
-                    # when back to root state in solveOneStep() and return True(for terminating while in solve()). 
-                    return True
-        
-        return solveOneStepHelper()
+        # solveOneStepDFS without depth_limit
+        self.solveOneStepDFS()
+        # Finally, return True if the solution state is reached, False otherwise
+        if self.currentState.state == self.victoryCondition:
+            return True
+        else:
+            return False
 
 
 class SolverBFS(UninformedSolver):
     def __init__(self, gameMaster, victoryCondition):
         super().__init__(gameMaster, victoryCondition)
+        self.depth_limit = 0
+        self.visitedBFS = dict()
+        self.visitedBFS[self.currentState] = 0
+
+    def solveOneStepDLS(self):
+        # if currentState is reach depth_limit, no going deeper
+        if self.currentState.depth >= self.depth_limit:
+            # if current state has parent state, can back-track
+            if self.currentState.parent:
+                self.gm.reverseMove(self.currentState.requiredMovable)
+                self.currentState = self.currentState.parent
+                return self.solveOneStepDLS()
+            # (root state) has no parent state, cannot back-track
+            else:
+                # terminated, return False because new state not found
+                return False
+        # almost same to DFS
+        movables = self.gm.getMovables()
+        # if current state has another child state
+        if len(movables) > self.currentState.nextChildToVisit:
+            movable = movables[self.currentState.nextChildToVisit]
+            self.gm.makeMove(movable)
+            childState = GameState(self.gm.getGameState(), self.currentState.depth + 1, movable)
+            childState.parent = self.currentState
+            # self.currentState.children.append(childState)
+            self.currentState.nextChildToVisit += 1
+            # if such child state is not visited in BFS, return
+            if childState not in self.visitedBFS:
+                self.currentState = childState
+                self.visitedBFS[childState] = childState.depth
+                # terminated, return True because new state found
+                return True
+            # if such child state is visited in current DLS or depth_limit or deeper, back-track
+            elif childState in self.visited or childState.depth == self.depth_limit or childState.depth > self.visitedBFS[childState]:
+                self.gm.reverseMove(movable)
+                return self.solveOneStepDLS()
+            # if such child state is not visited in current DLS and not depth_limit, go deeper
+            else:
+                self.currentState = childState
+                self.visited[childState] = True
+                return self.solveOneStepDLS()
+        # no more child state, try to back-track
+        else:
+            # if current state has parent state, can back-track
+            if self.currentState.parent:
+                self.gm.reverseMove(self.currentState.requiredMovable)
+                self.currentState = self.currentState.parent
+                return self.solveOneStepDLS()
+            # (root state) has no parent state, cannot back-track
+            else:
+                # terminated, return False because new state not found
+                return False
 
     def solveOneStep(self):
         """
@@ -82,12 +134,30 @@ class SolverBFS(UninformedSolver):
             True if the desired solution state is reached, False otherwise
         """
         ### Student code goes here
-        
+
+        # if has reach winning condition
+        if self.currentState.state == self.victoryCondition:
+            return True
+        # solveOneStepDLS iteratively with current depth_limit
+        while not self.solveOneStepDLS():
+            self.depth_limit += 1
+            self.visited = dict()
+            self.currentState = GameState(self.gm.getGameState(), 0, None)
+            self.visited[self.currentState] = True
+        # Finally, return True if the solution state is reached, False otherwise
+        if self.currentState.state == self.victoryCondition:
+            return True
+        else:
+            return False
+
+
+"""
+        NOTE - Using myFlag to iteratively deepening search
         # if has reach winning condition
         if self.currentState.state == self.victoryCondition:
             return True
 
-        def solveOneStepHelper(one_more_chance):            
+        def solveOneStepHelper(one_more_chance):
             movables = self.gm.getMovables()
             # if current state has another child state
             if len(movables) > self.currentState.nextChildToVisit:
@@ -142,11 +212,8 @@ class SolverBFS(UninformedSolver):
                     self.currentState = self.currentState.parent
                     return solveOneStepHelper(one_more_chance)
 
-        # TODO --avoid deadloop--
-        # If there is at least one solution, solverBFS.solve() must find it,
-        # otherwise, solverBFS.solve() return False, 
-        # when no univisited state can be found in solveOneStep() and return True(for terminating while in solve()). 
         if self.currentState.parent:
             self.gm.reverseMove(self.currentState.requiredMovable)
             self.currentState = self.currentState.parent
         return solveOneStepHelper(True)
+"""
